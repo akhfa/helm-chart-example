@@ -1,0 +1,26 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/browser-xss-filter: "true"
+    ingress.kubernetes.io/content-type-nosniff: "true"
+    ingress.kubernetes.io/custom-response-headers: server:AmazonS3||x-powered-by:hhvm
+    ingress.kubernetes.io/force-hsts: "true"
+    ingress.kubernetes.io/frame-deny: "true"
+    ingress.kubernetes.io/hsts-max-age: "31536000"
+    ingress.kubernetes.io/referrer-policy: same-origin
+    ingress.kubernetes.io/ssl-redirect: "true"
+    kubernetes.io/ingress.class: traefik
+  labels:
+    heritage: Tiller
+  name: tebak
+spec:
+  rules:
+  - host: tes-tebak.notulensiku.com
+    http:
+      paths:
+      - backend:
+          serviceName: tebak
+          servicePort: http
+        path: /
+
