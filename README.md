@@ -18,11 +18,34 @@ Kubernetes cluster yang sudah aktif. Untuk environment local, dapat menggunakan 
    ```
    kubectl apply -f https://raw.githubusercontent.com/akhfa/helm-chart-example/master/install/helm-service-account.yaml
    ```
-3. Install helm
+3. Set up TLS for helm
    ```
-   helm init --service-account tiller
+   mkdir helm-tls
+   cd helm-tls
+   openssl genrsa -out ./ca.key.pem 4096
+   openssl req -key ca.key.pem -new -x509 -days 7300 -sha256 -out ca.cert.pem -extensions v3_ca
+   openssl genrsa -out ./tiller.key.pem 4096
+   openssl genrsa -out ./helm.key.pem 4096
+   openssl req -key tiller.key.pem -new -sha256 -out tiller.csr.pem
+   openssl req -key helm.key.pem -new -sha256 -out helm.csr.pem
+   openssl x509 -req -CA ca.cert.pem -CAkey ca.key.pem -CAcreateserial -in tiller.csr.pem -out tiller.cert.pem -days 3650
+   openssl x509 -req -CA ca.cert.pem -CAkey ca.key.pem -CAcreateserial -in helm.csr.pem -out helm.cert.pem  -days 3650
    ```
-4. Amankan instalasi helm yang telah kita lakukan
+4. Install helm
+   ```
+   helm init --service-account tiller --tiller-tls --tiller-tls-cert ./tiller.cert.pem --tiller-tls-key ./tiller.key.pem --tiller-tls-verify --tls-ca-cert ca.cert.pem
+   ```
+   for kubernetes v1.16 (source: https://github.com/helm/helm/issues/6374#issuecomment-533427268)
+   ```
+   helm init --service-account tiller --tiller-tls --tiller-tls-cert ./tiller.cert.pem --tiller-tls-key ./tiller.key.pem --tiller-tls-verify --tls-ca-cert ca.cert.pem --override spec.selector.matchLabels.'name'='tiller',spec.selector.matchLabels.'app'='helm' --output yaml | sed 's@apiVersion: extensions/v1beta1@apiVersion: apps/v1@' | kubectl apply -f -
+   ```
+5. Copy cert to helm home dir
+   ```
+   cp ca.cert.pem $(helm home)/ca.pem
+   cp helm.cert.pem $(helm home)/cert.pem
+   cp helm.key.pem $(helm home)/key.pem
+   ```
+6. Amankan instalasi helm yang telah kita lakukan
    ```
    kubectl -n kube-system delete svc tiller-deploy
    kubectl -n kube-system patch deployment tiller-deploy --patch '
